@@ -582,7 +582,8 @@ void loop(void)
             scaled_sample = 255;
         if (scaled_sample < 1)
             scaled_sample = 1;
-        putchar(scaled_sample);
+        fputc(scaled_sample, stdout);
+        fflush(stdout);
         sample_queued = 0;
     }
 }
