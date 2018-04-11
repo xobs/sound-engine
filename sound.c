@@ -525,7 +525,7 @@ static void play_routine_step(struct ltc_sound_engine *engine) {
     int voice_num;
     for (voice_num = 0; voice_num < 2; voice_num++) {
         struct ltc_voice *voice = &engine->voices[voice_num];
-        if (--voice->countdown == 0) {
+        if (voice->countdown == 0) {
             uint16_t op = voice->pattern[voice->pattern_offset++];
             if ((op & 0xf000) == 0x8000) {
                 int effect_num = (op >> 8) & 0x7f;
@@ -557,8 +557,9 @@ static void play_routine_step(struct ltc_sound_engine *engine) {
                 fprintf(stderr, "Setting countdown to %d\n", voice->tick_lut[(op >> 11) & 0xf] * engine->loops_per_tick);
                 voice->countdown = voice->release_timer + (voice->tick_lut[(op >> 11) & 0xf] * engine->loops_per_tick);
             }
-            voice->countdown++;
         }
+        if (voice->countdown)
+            voice->countdown--;
     }
 }
 
