@@ -77,6 +77,14 @@ enum ltc_pattern_effect {
     FINAL_EFFECT = 7,
 };
 
+enum adsr_phase {
+    PHASE_OFF,
+    PHASE_ATTACK,
+    PHASE_DECAY,
+    PHASE_SUSTAIN,
+    PHASE_RELEASE,
+};
+
 #define NN(note, duration, pause) (((uint16_t)((note) & 0x7f)) \
                                 | (((duration) & 0x7) << 11) \
                                 | (((pause) & 0x7) << 7) )
@@ -112,7 +120,7 @@ volatile uint32_t global_tick_counter;
 static int32_t next_sample;
 
 // Nonzero if a sample has been queued, zero if the sample buffer is empty.
-static volatile uint8_t sample_queued;
+static volatile uint8_t sample_queued = 0;
 
 static const struct ltc_instrument *instruments[] = {
     &triangle_instrument,
@@ -123,53 +131,73 @@ static const struct ltc_instrument *instruments[] = {
 // An ltc voice
 struct ltc_voice
 {
-    // The current note's frequency.
+    /// The current note's frequency.
     uint32_t frequency;
 
-    // A pointer to the currently-selected instrument.
+    /// A pointer to the currently-selected instrument.
     const struct ltc_instrument *instrument;
 
+    /// How long the Attack phase is
     uint32_t attack_time;
+
+    /// How strong the Attack phase ends
     uint32_t attack_level;
+
+    /// How long the Decay time is
     uint32_t decay_time;
+
+    /// When the Decay finishes, what is the Sustain level?
     uint32_t sustain_level;
+
+    /// How long the Release phase is (i.e. after the note has ended)
     uint32_t release_time;
 
     // Keeps track of the phase in the instrument at the
     // given frequency.
     uint32_t phase_accumulator;
 
-    // The time when the note timer started.
-    uint32_t note_timer;
-
-    // What time the note was released
-    uint32_t release_timer;
+    /// How far into the current phase are we
+    uint32_t phase_timer;
 
     // A pointer to the currently-operating pattern
     const uint16_t *pattern;
     uint16_t pattern_offset;
 
-    // The number of ticks left until we advance the pattern offset.
-    uint16_t countdown;
+    /// The number of ticks left until we issue a Release.
+    uint16_t note_duration;
+
+    /// After the note, there is a period of time to wait for the next note.
+    uint16_t rest_duration;
 
     uint8_t tick_lut[8];
+
+    /// 0: off
+    /// 1: attack
+    /// 2: decay
+    /// 3: sustain
+    /// 4: release
+    uint8_t adsr_phase;
 };
 
 static const uint16_t pattern0_voice0[] = {
-    NE(SET_GLOBAL_SPEED, 100),
+    NE(SET_GLOBAL_SPEED, 200),
     NE(SET_INSTRUMENT, 0),
-    NAT(200),
+    NAT(100),
     NE(SET_ATTACK_LEVEL, 50),
     NDT(250),
     NE(SET_SUSTAIN_LEVEL, 40),
-    NRT(10),
+    NRT(200),
     NE(PATTERN_JUMP, 2),
 };
 
 static const uint16_t pattern1_voice0[] = {
-    NN(_C_5, N_QUARTER, N_HALF),
-    NN(_C_5, N_HALF, N_QUARTER),
-    NN(_C_5, N_DOTTED_HALF, 0),
+    NN(_C_5, N_WHOLE, 0),
+    //NN(_D_5, N_HALF, N_QUARTER),
+    //NN(_C_5, N_DOTTED_HALF, 0),
+    NN(_D_5, N_WHOLE, 0),
+
+    NN(_E_5, N_WHOLE, N_WHOLE),
+    NN(_F_5, N_WHOLE, N_WHOLE),
 /*
     NN(_G_5, N_QUARTER, N_HALF),
     NN(_A_6, N_QUARTER, N_HALF),
@@ -236,7 +264,7 @@ static struct ltc_sound_engine engine;
 static void patternDelay(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg)
 {
     //fprintf(stderr, "[Channel %d]: Pattern delay %d ticks\n", channel, arg);
-    engine->voices[channel].countdown = arg * engine->loops_per_tick;
+    engine->voices[channel].rest_duration = arg * engine->loops_per_tick;
 }
 
 static void jumpToPattern(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg)
@@ -264,7 +292,7 @@ static void setAttackLevel(struct ltc_sound_engine *engine, uint8_t channel, uin
 
 static void setDecayTime(struct ltc_sound_engine *engine, uint8_t channel, uint16_t arg)
 {
-    engine->voices[channel].decay_time = (arg * SAMPLE_RATE) / 1000 + engine->voices[channel].attack_time;
+    engine->voices[channel].decay_time = (arg * SAMPLE_RATE) / 1000;
 }
 
 static void setSustainLevel(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg)
@@ -371,9 +399,10 @@ void setSong(struct ltc_sound_engine *engine, const struct ltc_song *song) {
         struct ltc_voice *voice = &engine->voices[voice_num];
         voice->pattern = song->patterns[voice_num];
         voice->pattern_offset = 0;
-        voice->countdown = 0;
-        voice->note_timer = 0;
-        voice->release_timer = 0;
+        voice->note_duration = 0;
+        voice->rest_duration = 0;
+        voice->phase_timer = 0;
+        voice->adsr_phase = PHASE_OFF;
         voice->instrument = 0;
         memcpy(voice->tick_lut, tick_lut, sizeof(tick_lut));
     }
@@ -407,39 +436,44 @@ writel((1 << 7), (x == RELEASE_PHASE) ? FGPIOA_PSOR : FGPIOA_PCOR); \
 static int32_t processADSR(struct ltc_voice *voice, int32_t output)
 {
     int32_t pct;
-    if (voice->release_timer != 0)
-    {
-        /* Release phase */
-        DEBUG_PHASE(RELEASE_PHASE);
 
-        /* The note has expired */
-        if ((voice->note_timer - voice->release_timer) > voice->release_time)
-            return 0;
+    voice->phase_timer++;
+    switch (voice->adsr_phase) {
+        case PHASE_OFF:
+            pct = 0;
+            break;
 
-        /* Determine what percentage we'll adjust the note to */
-        pct = (voice->note_timer - voice->release_timer) * voice->sustain_level / voice->release_time;
-    }
-    else if (voice->note_timer < voice->attack_time)
-    {
-        /* Attack phase */
-        DEBUG_PHASE(ATTACK_PHASE);
+        case PHASE_ATTACK:
+            /* Determine what percentage we'll adjust the note to */
+            pct = voice->phase_timer * voice->attack_level / voice->attack_time;
 
-        /* Determine what percentage we'll adjust the note to */
-        pct = voice->note_timer * voice->attack_level / voice->attack_time;
-    }
-    else if (voice->note_timer < voice->decay_time)
-    {
-        /* Decay phase */
-        DEBUG_PHASE(DECAY_PHASE);
+            if (voice->phase_timer >= voice->attack_time) {
+                voice->phase_timer = 0;
+                voice->adsr_phase = PHASE_DECAY;
+            }
+            break;
 
-        /* Determine what percentage we'll adjust the note to */
-        pct = voice->sustain_level + (voice->decay_time - voice->note_timer) * (voice->attack_level - voice->sustain_level) / (voice->decay_time - voice->attack_time);
-    }
-    else
-    {
-        /* Sustain phase */
-        DEBUG_PHASE(SUSTAIN_PHASE);
-        pct = voice->sustain_level;
+        case PHASE_DECAY:
+            /* Determine what percentage we'll adjust the note to */
+            pct = voice->sustain_level + voice->phase_timer * (voice->attack_level - voice->sustain_level) / voice->decay_time;
+            if (voice->phase_timer >= voice->decay_time) {
+                voice->phase_timer = 0;
+                voice->adsr_phase = PHASE_SUSTAIN;
+            }
+            break;
+
+        case PHASE_SUSTAIN:
+            pct = voice->sustain_level;
+            break;
+
+        case PHASE_RELEASE:
+            /* Determine what percentage we'll adjust the note to */
+            pct = (voice->release_time - voice->phase_timer) * voice->sustain_level / voice->release_time;
+            if (voice->phase_timer >= voice->release_time) {
+                voice->phase_timer = 0;
+                voice->adsr_phase = PHASE_OFF;
+            }
+            break;
     }
 
     /* Scale the note volume to the calcualted percentage */
@@ -504,7 +538,6 @@ int32_t get_sample(struct ltc_voice *voice)
 
     output = processADSR(voice, output);
 
-    voice->note_timer++;
     return output;
 }
 
@@ -512,20 +545,21 @@ static void note_on(struct ltc_voice *voice, uint32_t freq)
 {
     fprintf(stderr, "Note on %p: %d\n", voice, freq);
     voice->frequency = freq;
-    voice->note_timer = 0;
-    voice->release_timer = 0;
+    voice->phase_timer = 0;
+    voice->adsr_phase = PHASE_ATTACK;
 }
 
 static void note_off(struct ltc_voice *voice)
 {
-    voice->release_timer = voice->note_timer;
+    voice->phase_timer = 0;
+    voice->adsr_phase = PHASE_RELEASE;
 }
 
 static void play_routine_step(struct ltc_sound_engine *engine) {
     int voice_num;
     for (voice_num = 0; voice_num < 2; voice_num++) {
         struct ltc_voice *voice = &engine->voices[voice_num];
-        if (voice->countdown == 0) {
+        if ((voice->note_duration == 0) && (voice->rest_duration == 0)) {
             uint16_t op = voice->pattern[voice->pattern_offset++];
             if ((op & 0xf000) == 0x8000) {
                 int effect_num = (op >> 8) & 0x7f;
@@ -547,19 +581,29 @@ static void play_routine_step(struct ltc_sound_engine *engine) {
                 setReleaseTime(engine, voice_num, op & 0xfff);
             }
             else {
-                if (op & 0x3f) {
-                    note_on(voice, note_lut[op & 0x3f]);
-                    voice->release_timer = voice->tick_lut[(op >> 7) & 0xf];// * engine->loops_per_tick;
+                uint32_t note_duration = (op >> 11) & 0x7;
+                uint32_t rest_duration = (op >> 7) & 0x7;
+                uint32_t note_index = (op >> 0) & 0x7f;
+                if (note_index) {
+                    note_on(voice, note_lut[note_index]);
                 }
                 else {
                     note_off(voice);
                 }
-                fprintf(stderr, "Setting countdown to %d\n", voice->tick_lut[(op >> 11) & 0xf] * engine->loops_per_tick);
-                voice->countdown = voice->release_timer + (voice->tick_lut[(op >> 11) & 0xf] * engine->loops_per_tick);
+                voice->note_duration = voice->tick_lut[note_duration] * engine->loops_per_tick;
+                voice->rest_duration = voice->tick_lut[rest_duration] * engine->loops_per_tick;
+                fprintf(stderr, "Note %d for %d, rest for %d\n", note_index, note_duration, rest_duration);
+//                voice->countdown = voice->release_timer + (voice->tick_lut[note_pause] * engine->loops_per_tick);
             }
         }
-        if (voice->countdown)
-            voice->countdown--;
+        else if (voice->note_duration) {
+            voice->note_duration--;
+            if (!voice->note_duration)
+                note_off(voice);
+        }
+        else if (voice->rest_duration) {
+            voice->rest_duration--;
+        }
     }
 }
 
