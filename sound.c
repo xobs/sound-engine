@@ -1,12 +1,25 @@
 #include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include "wave-table.h"
 #include "note-table.h"
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*x))
+#endif
+
+#ifdef ARDUINO_APP
+    extern "C" void errorCondition(void);
+#define panic(x) do {                         \
+    errorCondition();                         \
+} while(0)
+#endif
+#ifdef DESKTOP
+#include <stdlib.h>
+#include <stdio.h>
+#define panic(x) do {                         \
+    fprintf(stderr, "PANIC: %s\n", x);        \
+    exit(1);                                  \
+} while(0)
 #endif
 
 // Format:
@@ -545,9 +558,9 @@ static void play_routine_step(struct ltc_sound_engine *engine) {
         if ((voice->note_duration == 0) && (voice->rest_duration == 0)) {
             uint16_t op = voice->pattern[voice->pattern_offset++];
             if ((op & 0xf000) == 0x8000) {
-                int effect_num = (op >> 8) & 0x7f;
-                if (effect_num >= FINAL_EFFECT) {
-                    fprintf(stderr, "Invalid effect");
+                uint32_t effect_num = (op >> 8) & 0x7f;
+                if (effect_num > ARRAY_SIZE(effect_lut)) {
+                    panic("effect_num out of range");
                 }
                 effect_lut[effect_num](engine, voice_num, op & 0xff);
             }
@@ -566,9 +579,11 @@ static void play_routine_step(struct ltc_sound_engine *engine) {
             else {
                 uint32_t note_duration = (op >> 10) & 0x1f;
                 uint32_t rest_duration = (op >> 5) & 0x1f;
-                int32_t note_index = ((op >> 0) & 0x1f) - 16;
+                uint32_t note_index = ((op >> 0) & 0x1f) - 16;
                 note_index = voice->middle_c + note_index;
 
+                if (note_index > ARRAY_SIZE(note_lut))
+                    panic("note_index out of range");
                 note_on(voice, note_lut[note_index]);
 
                 voice->note_duration = note_duration * engine->loops_per_tick;
