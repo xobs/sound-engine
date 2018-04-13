@@ -1,0 +1,7 @@
+[package]
+name = "mid-to-se"
+version = "0.1.0"
+authors = ["Sean Cross <sean@xobs.io>"]
+
+[dependencies]
+ghakuf = "0.5.1"

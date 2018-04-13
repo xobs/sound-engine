@@ -180,8 +180,8 @@ struct ltc_voice
 };
 
 static const uint16_t pattern0_voice0[] = {
-    NE(SET_GLOBAL_SPEED, 200),
-    NE(SET_INSTRUMENT, 0),
+    NE(SET_GLOBAL_SPEED, 120),
+    NE(SET_INSTRUMENT, 1),
     NAT(100),
     NE(SET_ATTACK_LEVEL, 50),
     NDT(250),
@@ -191,42 +191,460 @@ static const uint16_t pattern0_voice0[] = {
 };
 
 static const uint16_t pattern1_voice0[] = {
-    NN(_C_5, N_WHOLE, 0),
-    //NN(_D_5, N_HALF, N_QUARTER),
-    //NN(_C_5, N_DOTTED_HALF, 0),
-    NN(_D_5, N_WHOLE, 0),
-
-    NN(_E_5, N_WHOLE, N_WHOLE),
-    NN(_F_5, N_WHOLE, N_WHOLE),
-/*
-    NN(_G_5, N_QUARTER, N_HALF),
-    NN(_A_6, N_QUARTER, N_HALF),
-    NN(_E_5, N_EIGHTH, N_EIGHTH),
-    NN(_E_5, N_EIGHTH, N_HALF),
-    NN(_C_5, N_EIGHTH, N_QUARTER),
-    NN(_Ds5, N_EIGHTH, N_QUARTER),
-    NN(_D_5, N_EIGHTH, N_QUARTER),
-    NN(_C_5, N_EIGHTH, N_QUARTER),
-*/
-/*
-    NN(0, 8),
-    NN(_C_5, 8),
-    NN(_D_5, 8),
-    NN(0, 8),
-    NN(_Ds5, 8),
-    NN(_E_5, 8),
-    NN(_C_5, 8),
-    NN(_D_5, 8),
-    NN(0, 127),
-    NN(_D_4, 64),
-    NN(_C_4, 64),
-    NN(_D_4, 64),
-    NN(_E_4, 64),
-*/
     NE(PATTERN_JUMP, 2),
 };
 
 static const uint16_t pattern0_voice1[] = {
+    NE(SET_INSTRUMENT, 0),
+NN(35, N_HALF, 0),
+NN(46, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(49, N_HALF, 0),
+NN(54, N_HALF, 0),
+NN(46, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(54, N_QUARTER, 0),
+NN(56, N_QUARTER, 0),
+NN(58, N_QUARTER, 0),
+NN(56, N_QUARTER, 0),
+NN(53, N_QUARTER, 0),
+NN(54, N_HALF, 0),
+NN(49, N_HALF, 0),
+NN(46, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(49, N_HALF, 0),
+NN(54, N_QUARTER, 0),
+NN(56, N_HALF, 0),
+NN(53, N_QUARTER, 0),
+NN(54, N_QUARTER, 0),
+NN(56, N_QUARTER, 0),
+NN(59, N_QUARTER, 0),
+NN(58, N_QUARTER, 0),
+NN(59, N_QUARTER, 0),
+NN(56, N_QUARTER, 0),
+NN(49, N_HALF, 0),
+NN(51, N_QUARTER, N_QUARTER),
+NN(44, N_QUARTER, 0),
+NN(46, N_HALF, 0),
+NN(42, N_EIGHTH, N_EIGHTH),
+NN(45, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(44, N_HALF, 0),
+NN(45, N_QUARTER, N_QUARTER),
+NN(45, N_EIGHTH, N_EIGHTH),
+NN(44, N_EIGHTH, N_EIGHTH),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(51, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(46, N_HALF, 0),
+NN(49, N_QUARTER, N_QUARTER),
+NN(51, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(44, N_QUARTER, N_QUARTER),
+NN(49, N_HALF, 0),
+NN(51, N_QUARTER, N_QUARTER),
+NN(44, N_QUARTER, 0),
+NN(46, N_HALF, 0),
+NN(42, N_EIGHTH, N_EIGHTH),
+NN(45, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(44, N_HALF, 0),
+NN(45, N_QUARTER, N_QUARTER),
+NN(45, N_EIGHTH, N_EIGHTH),
+NN(44, N_EIGHTH, N_EIGHTH),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(51, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(46, N_HALF, 0),
+NN(49, N_QUARTER, N_QUARTER),
+NN(51, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_HALF, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(34, N_QUARTER, 0),
+NN(35, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(42, N_HALF, 0),
+NN(42, N_QUARTER, 0),
+NN(41, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(41, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(34, N_QUARTER, 0),
+NN(35, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(42, N_HALF, 0),
+NN(42, N_QUARTER, 0),
+NN(41, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(42, N_HALF, 0),
+NN(44, N_HALF, 0),
+NN(49, N_HALF, 0),
+NN(51, N_QUARTER, N_QUARTER),
+NN(44, N_QUARTER, 0),
+NN(46, N_HALF, 0),
+NN(42, N_EIGHTH, N_EIGHTH),
+NN(45, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(44, N_HALF, 0),
+NN(45, N_QUARTER, N_QUARTER),
+NN(45, N_EIGHTH, N_EIGHTH),
+NN(44, N_EIGHTH, N_EIGHTH),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(51, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(46, N_HALF, 0),
+NN(49, N_QUARTER, N_QUARTER),
+NN(51, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(44, N_QUARTER, N_QUARTER),
+NN(49, N_HALF, 0),
+NN(51, N_QUARTER, N_QUARTER),
+NN(44, N_QUARTER, 0),
+NN(46, N_HALF, 0),
+NN(42, N_EIGHTH, N_EIGHTH),
+NN(45, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(44, N_HALF, 0),
+NN(45, N_QUARTER, N_QUARTER),
+NN(45, N_EIGHTH, N_EIGHTH),
+NN(44, N_EIGHTH, N_EIGHTH),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(51, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(46, N_HALF, 0),
+NN(49, N_QUARTER, N_QUARTER),
+NN(51, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(45, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_HALF, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(34, N_QUARTER, 0),
+NN(35, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(42, N_HALF, 0),
+NN(42, N_QUARTER, 0),
+NN(41, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(41, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(34, N_QUARTER, 0),
+NN(35, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, N_QUARTER),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(44, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(42, N_HALF, 0),
+NN(42, N_QUARTER, 0),
+NN(41, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(37, N_QUARTER, 0),
+NN(39, N_QUARTER, 0),
+NN(42, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(46, N_QUARTER, 0),
+NN(47, N_QUARTER, 0),
+NN(49, N_QUARTER, 0),
     NE(PATTERN_JUMP, 1),
 };
 
@@ -276,7 +694,7 @@ static void jumpToPattern(struct ltc_sound_engine *engine, uint8_t channel, uint
 
 static void setInstrument(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg)
 {
-    fprintf(stderr, "[Channel %d]: Setting instrument %d\n", channel, arg);
+//    fprintf(stderr, "[Channel %d]: Setting instrument %d\n", channel, arg);
     engine->voices[channel].instrument = instruments[arg];
 }
 
@@ -401,6 +819,7 @@ void setSong(struct ltc_sound_engine *engine, const struct ltc_song *song) {
         voice->pattern_offset = 0;
         voice->note_duration = 0;
         voice->rest_duration = 0;
+        voice->sustain_level = 100;
         voice->phase_timer = 0;
         voice->adsr_phase = PHASE_OFF;
         voice->instrument = 0;
@@ -439,40 +858,52 @@ static int32_t processADSR(struct ltc_voice *voice, int32_t output)
 
     voice->phase_timer++;
     switch (voice->adsr_phase) {
-        case PHASE_OFF:
-            pct = 0;
-            break;
-
         case PHASE_ATTACK:
-            /* Determine what percentage we'll adjust the note to */
-            pct = voice->phase_timer * voice->attack_level / voice->attack_time;
+            if (voice->attack_time) {
+                /* Determine what percentage we'll adjust the note to */
+                pct = voice->phase_timer * voice->attack_level / voice->attack_time;
 
-            if (voice->phase_timer >= voice->attack_time) {
-                voice->phase_timer = 0;
-                voice->adsr_phase = PHASE_DECAY;
+                if (voice->phase_timer >= voice->attack_time) {
+                    voice->phase_timer = 0;
+                    voice->adsr_phase = PHASE_DECAY;
+                }
+                break;
             }
-            break;
+            /* Fall through if attack_time is 0 */
+            voice->adsr_phase = PHASE_DECAY;
 
         case PHASE_DECAY:
-            /* Determine what percentage we'll adjust the note to */
-            pct = voice->sustain_level + voice->phase_timer * (voice->attack_level - voice->sustain_level) / voice->decay_time;
-            if (voice->phase_timer >= voice->decay_time) {
-                voice->phase_timer = 0;
-                voice->adsr_phase = PHASE_SUSTAIN;
+            if (voice->decay_time) {
+                /* Determine what percentage we'll adjust the note to */
+                pct = voice->sustain_level + voice->phase_timer * (voice->attack_level - voice->sustain_level) / voice->decay_time;
+                if (voice->phase_timer >= voice->decay_time) {
+                    voice->phase_timer = 0;
+                    voice->adsr_phase = PHASE_SUSTAIN;
+                }
+                break;
             }
-            break;
+            /* Fall through if decay_time is 0 */
+            voice->adsr_phase = PHASE_SUSTAIN;
 
         case PHASE_SUSTAIN:
             pct = voice->sustain_level;
             break;
 
         case PHASE_RELEASE:
-            /* Determine what percentage we'll adjust the note to */
-            pct = (voice->release_time - voice->phase_timer) * voice->sustain_level / voice->release_time;
-            if (voice->phase_timer >= voice->release_time) {
-                voice->phase_timer = 0;
-                voice->adsr_phase = PHASE_OFF;
+            if (voice->release_time) {
+                /* Determine what percentage we'll adjust the note to */
+                pct = (voice->release_time - voice->phase_timer) * voice->sustain_level / voice->release_time;
+                if (voice->phase_timer >= voice->release_time) {
+                    voice->phase_timer = 0;
+                    voice->adsr_phase = PHASE_OFF;
+                }
+                break;
             }
+            /* Fall through if release_time is 0 */
+            voice->adsr_phase = PHASE_OFF;
+
+        case PHASE_OFF:
+            pct = 0;
             break;
     }
 
@@ -593,7 +1024,6 @@ static void play_routine_step(struct ltc_sound_engine *engine) {
                 voice->note_duration = voice->tick_lut[note_duration] * engine->loops_per_tick;
                 voice->rest_duration = voice->tick_lut[rest_duration] * engine->loops_per_tick;
                 fprintf(stderr, "Note %d for %d, rest for %d\n", note_index, note_duration, rest_duration);
-//                voice->countdown = voice->release_timer + (voice->tick_lut[note_pause] * engine->loops_per_tick);
             }
         }
         else if (voice->note_duration) {
@@ -620,6 +1050,7 @@ void loop(void)
     next_sample += get_sample(&engine.voices[1]);
     sample_queued = 1;
 
+#ifdef DESKTOP
     {
         int32_t scaled_sample = next_sample + 129;
         if (scaled_sample > 255)
@@ -630,8 +1061,10 @@ void loop(void)
         fflush(stdout);
         sample_queued = 0;
     }
+#endif
 }
 
+#ifdef DESKTOP
 int main(int argc, char **argv) {
     setup();
     while (1) {
@@ -640,3 +1073,4 @@ int main(int argc, char **argv) {
     }
     return 0;
 }
+#endif
