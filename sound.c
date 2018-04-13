@@ -3,8 +3,8 @@
 #include "wave-table.h"
 #include "note-table.h"
 
-#define WRITE_TO_FILE
-#define VOICE_COUNT 1
+//#define WRITE_TO_FILE
+#define VOICE_COUNT 2
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*x))
@@ -227,12 +227,14 @@ struct ltc_voice
 static const uint16_t pattern0_voice0[] = {
     NGT(200),
     NE(SET_INSTRUMENT, 3),
-    NAT(100),
-    NE(SET_ATTACK_LEVEL, 70),
+
+    NAT(40),
+    NE(SET_ATTACK_LEVEL, 20),
     NDT(50),
-    NE(SET_DECAY_LEVEL, 40),
+    NE(SET_DECAY_LEVEL, 70),
     NE(SET_SUSTAIN_LEVEL, 30),
-    NRT(200),
+    NRT(20),
+
     NE(SET_MIDDLE_C, 71-12),
     NE(PATTERN_JUMP, 2),
 };
@@ -243,14 +245,15 @@ static const uint16_t pattern1_voice0[] = {
 };
 
 static const uint16_t pattern0_voice1[] = {
-    NE(SET_INSTRUMENT, 1),
-    NAT(30),
+    NE(SET_INSTRUMENT, 2),
+    NAT(70),
     NE(SET_ATTACK_LEVEL, 60),
     NDT(50),
     NE(SET_DECAY_LEVEL, 30),
     NE(SET_SUSTAIN_LEVEL, 60),
-    NRT(200),
+    NRT(100),
     NE(SET_MIDDLE_C, 71-24),
+
     NE(DELAY_TICKS, 1),
     NE(PATTERN_JUMP, 2),
 };
@@ -601,10 +604,8 @@ static int pwm0_stable_timer(void)
     if (loops > PWM_DELAY_LOOPS)
     {
         int32_t scaled_sample = next_sample + 129;
-        if (scaled_sample > 255) {
-            fprintf(stderr, "Clipping\n");
+        if (scaled_sample > 255)
             scaled_sample = 255;
-        }
         if (scaled_sample < 1)
             scaled_sample = 1;
         writel(scaled_sample, TPM0_C1V);
@@ -704,7 +705,7 @@ void loop(void)
             scaled_sample = 1;
 #ifdef WRITE_TO_FILE
         fputc(scaled_sample, outfile);
-        if (global_tick_counter >= 131072) {
+        if (global_tick_counter >= 524288) {
             fflush(outfile);
             exit(0);
         }
