@@ -233,20 +233,17 @@ static struct ltc_sound_engine engine;
 
 static void patternDelay(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg)
 {
-    //fprintf(stderr, "[Channel %d]: Pattern delay %d ticks\n", channel, arg);
     engine->voices[channel].rest_duration = arg * engine->loops_per_tick;
 }
 
 static void jumpToPattern(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg)
 {
-    //fprintf(stderr, "[Channel %d]: Jumping to pattern %d\n", channel, arg);
     engine->voices[channel].pattern = engine->song->patterns[arg];
     engine->voices[channel].pattern_offset = 0;
 }
 
 static void setInstrument(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg)
 {
-//    fprintf(stderr, "[Channel %d]: Setting instrument %d\n", channel, arg);
     engine->voices[channel].instrument = instruments[arg];
 }
 
@@ -570,20 +567,12 @@ static void play_routine_step(struct ltc_sound_engine *engine) {
                 uint32_t note_duration = (op >> 10) & 0x1f;
                 uint32_t rest_duration = (op >> 5) & 0x1f;
                 int32_t note_index = ((op >> 0) & 0x1f) - 16;
-                fprintf(stderr, "Note index: 0x%08x / 0x%04x\n", note_index, op);
                 note_index = voice->middle_c + note_index;
 
-		if (note_index > ARRAY_SIZE(note_lut)) {
-			fprintf(stderr, "Note index out of range: %d\n", note_index);
-			exit(1);
-		}
                 note_on(voice, note_lut[note_index]);
 
                 voice->note_duration = note_duration * engine->loops_per_tick;
                 voice->rest_duration = rest_duration * engine->loops_per_tick;
-                fprintf(stderr, "Note %d for %d (%d), rest for %d (%d)\n", note_index,
-                    note_duration, voice->note_duration,
-                    rest_duration, voice->rest_duration);
             }
         }
         else if (voice->note_duration) {
