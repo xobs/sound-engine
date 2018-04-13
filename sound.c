@@ -5,12 +5,16 @@
 #include "wave-table.h"
 #include "note-table.h"
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*x))
+#endif
+
 // Format:
 // ____ ____ ____ ____
-// 0DDD DPPP Pnnn nnnn
-// |  |    |        \- Note: Set to 0 for "Off"
-// |  |    \---------- Duration (in LUT events) of the post-note pause
-// |  \--------------- Duration (in LUT events) of this note
+// 0DDD DDPP PPPn nnnn
+// |  |    |        \- Note offset from current "base".
+// |  |    \---------- Duration (in ticks) of the post-note pause
+// |  \--------------- Duration (in ticks) of this note
 // \------------------ Word type: 0 for normal note, 1 for effect
 //
 // 1000 eeee aaaa aaaa
@@ -18,9 +22,8 @@
 // |     \------------ Effect number
 // \------------------ 1 indicates effect
 //
-// 1001 tttt dddd dddd - Set LUT delay duration
-//        |    \-------- Duration (in ticks)
-//        \------------- LUT delay index
+// 1001 tttt tttt tttt - Set global tick-per-loop counter
+//        \------------- Ticks per loop
 //
 // 1010 tttt tttt tttt - Set voice attack time
 //            \--------- Time (in ticks)
@@ -31,29 +34,17 @@
 // 1100 tttt tttt tttt - Set voice release time
 //            \--------- Time (in ticks)
 
-#define N_32 1
-#define N_16 2
-#define N_8 3
+#define N_32 0
+#define N_16 1
+#define N_8 2
 #define N_EIGHTH N_8
 #define N_4 4
 #define N_QUARTER N_4
-#define N_2 5
+#define N_2 8
 #define N_HALF N_2
-#define N_DOTTED_HALF 6
-#define N_1 7
+#define N_DOTTED_HALF 12
+#define N_1 16
 #define N_WHOLE N_1
-
-// Default tick table
-static const uint8_t tick_lut[8] = {
-    0,      // None
-    1,      // 32nd note
-    2,      // Sixteenth note
-    4,      // Eigth note
-    8,      // Quarter note
-    16,     // Half note
-    24,     // Dotted half-note
-    32,     // Whole note
-};
 
 enum ltc_pattern_effect {
     // Delay the next instruction by this amount
@@ -71,8 +62,8 @@ enum ltc_pattern_effect {
     // Set the current voice's sustain level
     SET_SUSTAIN_LEVEL = 5,
 
-    // Set the global pattern speed
-    SET_GLOBAL_SPEED = 6,
+    /// Sets 'middle C' (i.e. note 0)
+    SET_MIDDLE_C = 6,
 
     FINAL_EFFECT = 7,
 };
@@ -85,11 +76,11 @@ enum adsr_phase {
     PHASE_RELEASE,
 };
 
-#define NN(note, duration, pause) (((uint16_t)((note) & 0x7f)) \
-                                | (((duration) & 0x7) << 11) \
-                                | (((pause) & 0x7) << 7) )
+#define NN(note, duration, pause) (((((note)+16) & 0x1f)) \
+                                | (((duration) << 10) & (0x1f << 10)) \
+                                | (((pause) << 5) & (0x1f << 5)) )
 #define NE(effect, arg) ((((effect) & 0x7f) << 8) | (((arg) & 0xff) << 0) | (1 << 15))
-#define NLT(time) (0xa000 | (time & 0xfff)) // Voice LUT time
+#define NGT(time) (0x9000 | (time & 0xfff)) // Set global tick counter
 #define NAT(time) (0xa000 | (time & 0xfff)) // Voice attack time
 #define NDT(time) (0xb000 | (time & 0xfff)) // Voice decay time
 #define NRT(time) (0xc000 | (time & 0xfff)) // Voice release time
@@ -164,12 +155,13 @@ struct ltc_voice
     uint16_t pattern_offset;
 
     /// The number of ticks left until we issue a Release.
-    uint16_t note_duration;
+    uint32_t note_duration;
 
     /// After the note, there is a period of time to wait for the next note.
-    uint16_t rest_duration;
+    uint32_t rest_duration;
 
-    uint8_t tick_lut[8];
+    /// All notes are relative to this note.
+    uint8_t middle_c;
 
     /// 0: off
     /// 1: attack
@@ -180,472 +172,32 @@ struct ltc_voice
 };
 
 static const uint16_t pattern0_voice0[] = {
-    NE(SET_GLOBAL_SPEED, 120),
-    NE(SET_INSTRUMENT, 1),
-    NAT(100),
+    NGT(200),
+    NE(SET_INSTRUMENT, 0),
+    NAT(30),
     NE(SET_ATTACK_LEVEL, 50),
-    NDT(250),
+    NDT(50),
     NE(SET_SUSTAIN_LEVEL, 40),
     NRT(200),
+    NE(SET_MIDDLE_C, 71-12),
     NE(PATTERN_JUMP, 2),
 };
 
 static const uint16_t pattern1_voice0[] = {
+    #include "mid-to-se/song.h"
     NE(PATTERN_JUMP, 2),
 };
 
 static const uint16_t pattern0_voice1[] = {
-    NE(SET_INSTRUMENT, 0),
-NN(35, N_HALF, 0),
-NN(46, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(49, N_HALF, 0),
-NN(54, N_HALF, 0),
-NN(46, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(54, N_QUARTER, 0),
-NN(56, N_QUARTER, 0),
-NN(58, N_QUARTER, 0),
-NN(56, N_QUARTER, 0),
-NN(53, N_QUARTER, 0),
-NN(54, N_HALF, 0),
-NN(49, N_HALF, 0),
-NN(46, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(49, N_HALF, 0),
-NN(54, N_QUARTER, 0),
-NN(56, N_HALF, 0),
-NN(53, N_QUARTER, 0),
-NN(54, N_QUARTER, 0),
-NN(56, N_QUARTER, 0),
-NN(59, N_QUARTER, 0),
-NN(58, N_QUARTER, 0),
-NN(59, N_QUARTER, 0),
-NN(56, N_QUARTER, 0),
-NN(49, N_HALF, 0),
-NN(51, N_QUARTER, N_QUARTER),
-NN(44, N_QUARTER, 0),
-NN(46, N_HALF, 0),
-NN(42, N_EIGHTH, N_EIGHTH),
-NN(45, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(44, N_HALF, 0),
-NN(45, N_QUARTER, N_QUARTER),
-NN(45, N_EIGHTH, N_EIGHTH),
-NN(44, N_EIGHTH, N_EIGHTH),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(51, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(46, N_HALF, 0),
-NN(49, N_QUARTER, N_QUARTER),
-NN(51, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(44, N_QUARTER, N_QUARTER),
-NN(49, N_HALF, 0),
-NN(51, N_QUARTER, N_QUARTER),
-NN(44, N_QUARTER, 0),
-NN(46, N_HALF, 0),
-NN(42, N_EIGHTH, N_EIGHTH),
-NN(45, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(44, N_HALF, 0),
-NN(45, N_QUARTER, N_QUARTER),
-NN(45, N_EIGHTH, N_EIGHTH),
-NN(44, N_EIGHTH, N_EIGHTH),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(51, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(46, N_HALF, 0),
-NN(49, N_QUARTER, N_QUARTER),
-NN(51, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_HALF, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(34, N_QUARTER, 0),
-NN(35, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(42, N_HALF, 0),
-NN(42, N_QUARTER, 0),
-NN(41, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(41, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(34, N_QUARTER, 0),
-NN(35, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(42, N_HALF, 0),
-NN(42, N_QUARTER, 0),
-NN(41, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(42, N_HALF, 0),
-NN(44, N_HALF, 0),
-NN(49, N_HALF, 0),
-NN(51, N_QUARTER, N_QUARTER),
-NN(44, N_QUARTER, 0),
-NN(46, N_HALF, 0),
-NN(42, N_EIGHTH, N_EIGHTH),
-NN(45, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(44, N_HALF, 0),
-NN(45, N_QUARTER, N_QUARTER),
-NN(45, N_EIGHTH, N_EIGHTH),
-NN(44, N_EIGHTH, N_EIGHTH),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(51, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(46, N_HALF, 0),
-NN(49, N_QUARTER, N_QUARTER),
-NN(51, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(44, N_QUARTER, N_QUARTER),
-NN(49, N_HALF, 0),
-NN(51, N_QUARTER, N_QUARTER),
-NN(44, N_QUARTER, 0),
-NN(46, N_HALF, 0),
-NN(42, N_EIGHTH, N_EIGHTH),
-NN(45, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(44, N_HALF, 0),
-NN(45, N_QUARTER, N_QUARTER),
-NN(45, N_EIGHTH, N_EIGHTH),
-NN(44, N_EIGHTH, N_EIGHTH),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(51, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(46, N_HALF, 0),
-NN(49, N_QUARTER, N_QUARTER),
-NN(51, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(45, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_HALF, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(34, N_QUARTER, 0),
-NN(35, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(42, N_HALF, 0),
-NN(42, N_QUARTER, 0),
-NN(41, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(41, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(34, N_QUARTER, 0),
-NN(35, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, N_QUARTER),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(44, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(42, N_HALF, 0),
-NN(42, N_QUARTER, 0),
-NN(41, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(37, N_QUARTER, 0),
-NN(39, N_QUARTER, 0),
-NN(42, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(46, N_QUARTER, 0),
-NN(47, N_QUARTER, 0),
-NN(49, N_QUARTER, 0),
-    NE(PATTERN_JUMP, 1),
+    NE(SET_INSTRUMENT, 2),
+    NAT(30),
+    NE(SET_ATTACK_LEVEL, 20),
+    NDT(50),
+    NE(SET_SUSTAIN_LEVEL, 10),
+    NRT(200),
+    NE(SET_MIDDLE_C, 71-12),
+    NE(DELAY_TICKS, 3),
+    NE(PATTERN_JUMP, 2),
 };
 
 static const uint16_t *sample_song_patterns[] = {
@@ -669,7 +221,7 @@ struct ltc_sound_engine {
     uint32_t tick_counter;
 
     // Number of loops-per-tick
-    uint16_t loops_per_tick;
+    uint32_t loops_per_tick;
 
     // Currently-selected song
     const struct ltc_song *song;
@@ -723,9 +275,13 @@ static void setReleaseTime(struct ltc_sound_engine *engine, uint8_t channel, uin
     engine->voices[channel].release_time = (arg * SAMPLE_RATE) / 1000;
 }
 
-static void setGlobalSpeed(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg)
+static void setGlobalSpeed(struct ltc_sound_engine *engine, uint8_t channel, uint16_t arg)
 {
     engine->loops_per_tick = arg;
+}
+
+static void setMiddleC(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg) {
+    engine->voices[channel].middle_c = arg;
 }
 
 typedef void (*effect_t)(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg);
@@ -737,7 +293,7 @@ static const effect_t effect_lut[] = {
     setInstrument,
     setAttackLevel,
     setSustainLevel,
-    setGlobalSpeed,
+    setMiddleC,
 };
 
 #if 0
@@ -823,7 +379,7 @@ void setSong(struct ltc_sound_engine *engine, const struct ltc_song *song) {
         voice->phase_timer = 0;
         voice->adsr_phase = PHASE_OFF;
         voice->instrument = 0;
-        memcpy(voice->tick_lut, tick_lut, sizeof(tick_lut));
+        voice->middle_c = 40;
     }
 }
 
@@ -974,7 +530,6 @@ int32_t get_sample(struct ltc_voice *voice)
 
 static void note_on(struct ltc_voice *voice, uint32_t freq)
 {
-    fprintf(stderr, "Note on %p: %d\n", voice, freq);
     voice->frequency = freq;
     voice->phase_timer = 0;
     voice->adsr_phase = PHASE_ATTACK;
@@ -1000,7 +555,7 @@ static void play_routine_step(struct ltc_sound_engine *engine) {
                 effect_lut[effect_num](engine, voice_num, op & 0xff);
             }
             else if ((op & 0xf000) == 0x9000) {
-                voice->tick_lut[(op & 0xf00) >> 8] = (op & 0xff);
+                setGlobalSpeed(engine, voice_num, op & 0xfff);
             }
             else if ((op & 0xf000) == 0xa000) {
                 setAttackTime(engine, voice_num, op & 0xfff);
@@ -1012,18 +567,23 @@ static void play_routine_step(struct ltc_sound_engine *engine) {
                 setReleaseTime(engine, voice_num, op & 0xfff);
             }
             else {
-                uint32_t note_duration = (op >> 11) & 0x7;
-                uint32_t rest_duration = (op >> 7) & 0x7;
-                uint32_t note_index = (op >> 0) & 0x7f;
-                if (note_index) {
-                    note_on(voice, note_lut[note_index]);
-                }
-                else {
-                    note_off(voice);
-                }
-                voice->note_duration = voice->tick_lut[note_duration] * engine->loops_per_tick;
-                voice->rest_duration = voice->tick_lut[rest_duration] * engine->loops_per_tick;
-                fprintf(stderr, "Note %d for %d, rest for %d\n", note_index, note_duration, rest_duration);
+                uint32_t note_duration = (op >> 10) & 0x1f;
+                uint32_t rest_duration = (op >> 5) & 0x1f;
+                int32_t note_index = ((op >> 0) & 0x1f) - 16;
+                fprintf(stderr, "Note index: 0x%08x / 0x%04x\n", note_index, op);
+                note_index = voice->middle_c + note_index;
+
+		if (note_index > ARRAY_SIZE(note_lut)) {
+			fprintf(stderr, "Note index out of range: %d\n", note_index);
+			exit(1);
+		}
+                note_on(voice, note_lut[note_index]);
+
+                voice->note_duration = note_duration * engine->loops_per_tick;
+                voice->rest_duration = rest_duration * engine->loops_per_tick;
+                fprintf(stderr, "Note %d for %d (%d), rest for %d (%d)\n", note_index,
+                    note_duration, voice->note_duration,
+                    rest_duration, voice->rest_duration);
             }
         }
         else if (voice->note_duration) {
