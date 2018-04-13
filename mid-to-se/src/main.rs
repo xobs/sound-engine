@@ -8,7 +8,7 @@ use std::io::Write;
 
 struct HogeHandler {
     last_time: u32,
-    last_note: u8,
+    last_note: i32,
     output: fs::File,
     lowest_note: u8,
     highest_note: u8,
@@ -56,12 +56,12 @@ impl Handler for HogeHandler {
                     writeln!(
                         self.output,
                         "NN({}, {}, {}),",
-                        self.last_note.saturating_sub(24),
+                        self.last_note - 71,
                         Self::delta_to_note(self.last_time),
                         Self::delta_to_note((delta_time))
                     );
                 }
-                self.last_note = note;
+                self.last_note = note as i32;
                 if note > self.highest_note {
                     self.highest_note = note;
                 }
@@ -89,7 +89,7 @@ impl Handler for HogeHandler {
 
 fn main() {
     let path = path::Path::new("Nyancat.mid");
-    let mut handler = HogeHandler::new("song.h").expect("Couldn't create reader");
+    let mut handler = HogeHandler::new("../song.h").expect("Couldn't create reader");
     {
         let mut reader = Reader::new(&mut handler, &path).unwrap();
         let _ = reader.read();
