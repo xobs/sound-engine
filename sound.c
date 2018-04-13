@@ -184,7 +184,7 @@ static const uint16_t pattern0_voice0[] = {
 };
 
 static const uint16_t pattern1_voice0[] = {
-    #include "mid-to-se/song.h"
+    #include "song.h"
     NE(PATTERN_JUMP, 2),
 };
 
