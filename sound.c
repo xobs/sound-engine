@@ -307,75 +307,6 @@ static const effect_t effect_lut[] = {
     setMiddleC,
 };
 
-#if 0
-static int pwm0_stable_timer(void)
-{
-    static int loops = 0;
-
-    loops++;
-    if (loops > PWM_DELAY_LOOPS)
-    {
-        int32_t scaled_sample = next_sample + 129;
-        if (scaled_sample > 255)
-            scaled_sample = 255;
-        if (scaled_sample < 1)
-            scaled_sample = 1;
-        writel(scaled_sample, TPM0_C1V);
-        writel(scaled_sample, TPM0_C0V);
-
-        loops = 0;
-        sample_queued = 0;
-        //global_tick_counter++;
-    }
-
-    static int other_loops;
-    if (other_loops++ > 12) {
-        global_tick_counter++;
-        other_loops = 0;
-    }
-
-    /* Reset the timer IRQ, to allow us to fire again next time */
-    writel(TPM0_STATUS_CH1F | TPM0_STATUS_CH0F | TPM0_STATUS_TOF, TPM0_STATUS);
-
-    return 0;
-}
-
-static void prepare_pwm()
-{
-    // Write dummy values out, to configure PWM mux
-    pinMode(0, OUTPUT);
-    analogWrite(0, 63);
-    pinMode(1, OUTPUT);
-    analogWrite(1, 63);
-
-    // Disable TPM0, allowing us to configure it
-    writel(0, TPM0_SC);
-
-    // Also disable both channels, which are running from the
-    // calls to analogWrite() above
-    writel(0, TPM0_C0SC);
-    writel(0, TPM0_C1SC);
-
-    // Configure the TPM to use the MCGFLLCLK (~32 MHz?)
-    writel(readl(SIM_SOPT2) | (1 << 24), SIM_SOPT2);
-
-    // We've picked pin 0, which is on TPM0_CH1
-    writel(255, TPM0_MOD);
-    writel(0, TPM0_CNT);
-
-    writel(TPM0_C0SC_MSB | TPM0_C0SC_ELSB, TPM0_C0SC);
-    writel(TPM0_C1SC_MSB | TPM0_C1SC_ELSA, TPM0_C1SC);
-
-    writel(100, TPM0_C1V);
-    writel(100, TPM0_C0V);
-    writel(TPM0_CONF_TRGSEL(8), TPM0_CONF);
-    writel(TPM0_SC_TOF | TPM0_SC_TOIE | TPM0_SC_CMOD(1) | TPM0_SC_PS(0), TPM0_SC); // Enable TPM0
-
-    /* Enable the IRQ in the system-wide interrupt table */
-    attachFastInterrupt(PWM0_IRQ, pwm0_stable_timer);
-}
-#endif
-
 void setSong(struct ltc_sound_engine *engine, const struct ltc_song *song) {
     int voice_num;
     engine->song = song;
@@ -392,17 +323,6 @@ void setSong(struct ltc_sound_engine *engine, const struct ltc_song *song) {
         voice->instrument = 0;
         voice->middle_c = 40;
     }
-}
-
-void setup(void)
-{
-    setSong(&engine, &sample_song);
-    //prepare_pwm();
-    //enableInterrupt(PWM0_IRQ);
-    //pinMode(2, OUTPUT);
-    //pinMode(3, OUTPUT);
-    //pinMode(4, OUTPUT);
-    //pinMode(5, OUTPUT);
 }
 
 #define ATTACK_PHASE 1
@@ -601,6 +521,94 @@ static void play_routine_step(struct ltc_sound_engine *engine) {
             voice->rest_duration--;
         }
     }
+}
+
+#ifdef ARDUINO_APP
+
+#include "Arduino.h"
+#include "ChibiOS.h"
+#include "kl02.h"
+#include "memio.h"
+
+static int pwm0_stable_timer(void)
+{
+    static int loops = 0;
+
+    loops++;
+    if (loops > PWM_DELAY_LOOPS)
+    {
+        int32_t scaled_sample = next_sample + 129;
+        if (scaled_sample > 255)
+            scaled_sample = 255;
+        if (scaled_sample < 1)
+            scaled_sample = 1;
+        writel(scaled_sample, TPM0_C1V);
+        writel(scaled_sample, TPM0_C0V);
+
+        loops = 0;
+        sample_queued = 0;
+        //global_tick_counter++;
+    }
+
+    static int other_loops;
+    if (other_loops++ > 12) {
+        global_tick_counter++;
+        other_loops = 0;
+    }
+
+    /* Reset the timer IRQ, to allow us to fire again next time */
+    writel(TPM0_STATUS_CH1F | TPM0_STATUS_CH0F | TPM0_STATUS_TOF, TPM0_STATUS);
+
+    return 0;
+}
+
+static void prepare_pwm()
+{
+    // Write dummy values out, to configure PWM mux
+    pinMode(0, OUTPUT);
+    analogWrite(0, 63);
+    pinMode(1, OUTPUT);
+    analogWrite(1, 63);
+
+    // Disable TPM0, allowing us to configure it
+    writel(0, TPM0_SC);
+
+    // Also disable both channels, which are running from the
+    // calls to analogWrite() above
+    writel(0, TPM0_C0SC);
+    writel(0, TPM0_C1SC);
+
+    // Configure the TPM to use the MCGFLLCLK (~32 MHz?)
+    writel(readl(SIM_SOPT2) | (1 << 24), SIM_SOPT2);
+
+    // We've picked pin 0, which is on TPM0_CH1
+    writel(255, TPM0_MOD);
+    writel(0, TPM0_CNT);
+
+    writel(TPM0_C0SC_MSB | TPM0_C0SC_ELSB, TPM0_C0SC);
+    writel(TPM0_C1SC_MSB | TPM0_C1SC_ELSA, TPM0_C1SC);
+
+    writel(100, TPM0_C1V);
+    writel(100, TPM0_C0V);
+    writel(TPM0_CONF_TRGSEL(8), TPM0_CONF);
+    writel(TPM0_SC_TOF | TPM0_SC_TOIE | TPM0_SC_CMOD(1) | TPM0_SC_PS(0), TPM0_SC); // Enable TPM0
+
+    /* Enable the IRQ in the system-wide interrupt table */
+    attachFastInterrupt(PWM0_IRQ, pwm0_stable_timer);
+}
+#endif
+
+void setup(void)
+{
+    setSong(&engine, &sample_song);
+#ifdef ARDUINO_APP
+    prepare_pwm();
+    enableInterrupt(PWM0_IRQ);
+    pinMode(2, OUTPUT);
+    pinMode(3, OUTPUT);
+    pinMode(4, OUTPUT);
+    pinMode(5, OUTPUT);
+#endif
 }
 
 void loop(void)
