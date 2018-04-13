@@ -407,7 +407,9 @@ static int32_t processADSR(struct ltc_voice *voice, int32_t output)
                  *     t = attack_time   pct = voice->decay_level
                  */
                 /* Determine what percentage we'll adjust the note to */
-                pct = (voice->phase_timer * (voice->decay_level - voice->attack_level) / voice->attack_time) + voice->attack_level;
+                pct = ((int32_t)voice->phase_timer * ((int32_t)voice->decay_level - (int32_t)voice->attack_level) / (int32_t)voice->attack_time) + (int32_t)voice->attack_level;
+if (pct > 100)
+panic("Percentage is > 100");
 //fprintf(stderr, "attack_level: %d  decay_level: %d  phase_timer: %d  attack_time: %d  pct: %d\n",
 //voice->attack_level, voice->decay_level, voice->phase_timer, voice->attack_time, pct);
 
@@ -440,7 +442,7 @@ static int32_t processADSR(struct ltc_voice *voice, int32_t output)
         case PHASE_RELEASE:
             if (voice->release_time) {
                 /* Determine what percentage we'll adjust the note to */
-                pct = (voice->release_time - voice->phase_timer) * voice->sustain_level / voice->release_time;
+                pct = ((int32_t)voice->release_time - (int32_t)voice->phase_timer) * (int32_t)voice->sustain_level / (int32_t)voice->release_time;
                 if (voice->phase_timer >= voice->release_time) {
                      ADSR_PHASE(voice, PHASE_OFF);
                 }
