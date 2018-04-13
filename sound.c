@@ -272,7 +272,7 @@ static const struct ltc_song sample_song = {
 };
 
 struct ltc_sound_engine {
-    struct ltc_voice voices[2];
+    struct ltc_voice voices[VOICE_COUNT];
 
     // Global counter
     uint32_t tick_counter;
@@ -364,7 +364,7 @@ void setSong(struct ltc_sound_engine *engine, const struct ltc_song *song) {
     int voice_num;
     engine->song = song;
 
-    for (voice_num = 0; voice_num < 2; voice_num++) {
+    for (voice_num = 0; voice_num < VOICE_COUNT; voice_num++) {
         struct ltc_voice *voice = &engine->voices[voice_num];
         voice->pattern = song->patterns[voice_num];
         voice->pattern_offset = 0;
@@ -536,7 +536,7 @@ static void note_off(struct ltc_voice *voice)
 
 static void play_routine_step(struct ltc_sound_engine *engine) {
     int voice_num;
-    for (voice_num = 0; voice_num < 2; voice_num++) {
+    for (voice_num = 0; voice_num < VOICE_COUNT; voice_num++) {
         struct ltc_voice *voice = &engine->voices[voice_num];
         if ((voice->note_duration == 0) && (voice->rest_duration == 0)) {
             uint16_t op = voice->pattern[voice->pattern_offset++];
@@ -684,7 +684,7 @@ void loop(void)
     play_routine_step(&engine);
 
     next_sample = 0;
-    for (voice_num = 0; voice_num < ARRAY_SIZE(engine.voices); voice_num++)
+    for (voice_num = 0; voice_num < VOICE_COUNT; voice_num++)
         next_sample += get_sample(&engine.voices[voice_num]);
     sample_queued = 1;
 
