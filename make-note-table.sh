@@ -8,11 +8,13 @@ frequencies="
        880   932   987  1046  1108  1174  1244  1318  1396  1479  1567  1661
       1760  1864  1975  2093  2217  2349  2489  2637  2793  2959  3135  3322
       3520  3729  3951  4186  4434  4698  4978  5274  5587  5919  6271  6644
+      7040  7458  7902  8372  8868  9396  9956 10548 11174 11838 12542 13288
 "
 
 note=0
 octave=0
 our_counter=-12
+highest_note=85
 
 get_notename() {
     note=$1
@@ -34,7 +36,7 @@ echo "#define __NOTE_FREQUENCIES"
 for freq in $frequencies
 do
     our_counter=$((${our_counter}+1))
-    if [ ${our_counter} -gt 0 -a ${our_counter} -lt 64 ]
+    if [ ${our_counter} -gt 0 -a ${our_counter} -lt ${highest_note} ]
     then
         note_lut_str="${note_lut_str} ${freq},";
     fi
@@ -44,7 +46,7 @@ do
             notename=$(get_notename ${note})
             echo "#define FREQ_${notename}_${octave} ${freq}"
 
-            if [ ${our_counter} -gt 0 -a ${our_counter} -lt 64 ]
+            if [ ${our_counter} -gt 0 -a ${our_counter} -lt ${highest_note} ]
             then
                 echo "#define _${notename}_${octave} ${our_counter}"
             fi
@@ -54,7 +56,7 @@ do
         1|4|6|9|11)
             notename=$(get_notename $((${note}-1)))
             echo "#define FREQ_${notename}s${octave} ${freq}"
-            if [ ${our_counter} -gt 0 -a ${our_counter} -lt 64 ]
+            if [ ${our_counter} -gt 0 -a ${our_counter} -lt ${highest_note} ]
             then
                 echo "#define _${notename}s${octave} ${our_counter}"
             fi
@@ -70,7 +72,7 @@ do
             notename=$(get_notename $((${note})))
             echo "#define FREQ_${notename}b${octave} ${freq}"
 
-            if [ ${our_counter} -gt 0 -a ${our_counter} -lt 64 ]
+            if [ ${our_counter} -gt 0 -a ${our_counter} -lt ${highest_note} ]
             then
                 echo "#define _${notename}b${octave} ${our_counter}"
             fi
