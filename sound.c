@@ -287,6 +287,7 @@ static void setReleaseTime(struct ltc_sound_engine *engine, uint8_t channel, uin
 
 static void setGlobalSpeed(struct ltc_sound_engine *engine, uint8_t channel, uint16_t arg)
 {
+    (void)channel;
     engine->loops_per_tick = arg;
 }
 
@@ -469,6 +470,7 @@ static int32_t processADSR(struct ltc_voice *voice, int32_t output)
             voice->adsr_phase = PHASE_OFF;
 
         case PHASE_OFF:
+        default:
             pct = 0;
             break;
     }
