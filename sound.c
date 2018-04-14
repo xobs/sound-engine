@@ -71,7 +71,7 @@ enum ltc_pattern_effect {
     DELAY_TICKS = 1,
 
     // Jump to a new pattern
-    PATTERN_JUMP = 2,
+    PATTERN_JUMP_ABS = 2,
 
     // Set the current voice's instrument
     SET_INSTRUMENT = 3,
@@ -88,7 +88,13 @@ enum ltc_pattern_effect {
     /// Sets 'middle C' (i.e. note 0)
     SET_MIDDLE_C = 7,
 
-    FINAL_EFFECT = 8,
+    /// Jump a relative number of patterns forward or backwards
+    PATTERN_JUMP_REL = 8,
+
+    /// Repeat the current pattern this many times
+    PATTERN_REPEAT_COUNT = 9,
+
+    FINAL_EFFECT = 10,
 };
 
 enum adsr_phase {
@@ -205,7 +211,9 @@ struct ltc_voice
 
     // A pointer to the currently-operating pattern
     const uint16_t *pattern;
+    uint16_t pattern_num;
     uint16_t pattern_offset;
+    uint8_t pattern_repeat_count;
 
     /// The number of ticks left until we issue a Release.
     uint32_t note_duration;
@@ -224,7 +232,7 @@ struct ltc_voice
     uint8_t adsr_phase;
 };
 
-static const uint16_t pattern0_voice0[] = {
+static const uint16_t voice0_setup[] = {
     NGT(200),
     NE(SET_INSTRUMENT, 3),
 
@@ -236,16 +244,11 @@ static const uint16_t pattern0_voice0[] = {
     NRT(20),
 
     NE(SET_MIDDLE_C, 71-12),
-    NE(PATTERN_JUMP, 2),
+    NE(PATTERN_JUMP_ABS, 2),
 };
 
-static const uint16_t pattern1_voice0[] = {
-    #include "song.h"
-    NE(PATTERN_JUMP, 2),
-};
-
-static const uint16_t pattern0_voice1[] = {
-    NE(SET_INSTRUMENT, 2),
+static const uint16_t voice1_setup[] = {
+    NE(SET_INSTRUMENT, 3),
     NAT(70),
     NE(SET_ATTACK_LEVEL, 60),
     NDT(50),
@@ -255,13 +258,15 @@ static const uint16_t pattern0_voice1[] = {
     NE(SET_MIDDLE_C, 71-24),
 
     NE(DELAY_TICKS, 1),
-    NE(PATTERN_JUMP, 2),
+    NE(PATTERN_JUMP_ABS, 2),
 };
 
+#include "nyan.h"
+
 static const uint16_t *sample_song_patterns[] = {
-    pattern0_voice0,
-    pattern0_voice1,
-    pattern1_voice0,
+    voice0_setup,
+    voice1_setup,
+    SONG_PATTERNS
 };
 
 struct ltc_song {
@@ -294,13 +299,30 @@ static void patternDelay(struct ltc_sound_engine *engine, uint8_t channel, uint8
     engine->voices[channel].rest_duration = arg * engine->loops_per_tick;
 }
 
-static void jumpToPattern(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg)
+static void patternJumpAbs(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg)
 {
     if (arg >= engine->song->pattern_count) {
-        panic("attempt to jump to nonexistent pattern");
+        panic("attempt to abs jump to nonexistent pattern");
     }
     engine->voices[channel].pattern = engine->song->patterns[arg];
+    engine->voices[channel].pattern_num = arg;
     engine->voices[channel].pattern_offset = 0;
+    engine->voices[channel].pattern_repeat_count = 0;
+}
+
+static void patternJumpRel(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg)
+{
+    int8_t target_num = (int8_t)engine->voices[channel].pattern_num + (int8_t)arg;
+    if (target_num >= engine->song->pattern_count) {
+        panic("attempt to rel jump to nonexistent pattern");
+    }
+    if (target_num < 0) {
+        panic("attempt to jump to nonexistent pattern < 0");
+    }
+    engine->voices[channel].pattern = engine->song->patterns[target_num];
+    engine->voices[channel].pattern_num = target_num;
+    engine->voices[channel].pattern_offset = 0;
+    engine->voices[channel].pattern_repeat_count = 0;
 }
 
 static void setInstrument(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg)
@@ -350,17 +372,44 @@ static void setMiddleC(struct ltc_sound_engine *engine, uint8_t channel, uint8_t
     engine->voices[channel].middle_c = arg;
 }
 
+static void patternRepeatCount(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg) {
+    struct ltc_voice *voice = &engine->voices[channel];
+    int new_count = voice->pattern_repeat_count - 1;
+
+    // If pattern_repeat_count is nonzero, then we're in the middle of repeating.
+    switch (voice->pattern_repeat_count) {
+    // If it's 1, then it's a NOP, since we've already processed it
+    // during this iteration of a pattern.  Must jump to a new pattern
+    // first.
+    case 1:
+        break;
+    case 0:
+        new_count = arg - 1;
+        /* Fall through */
+    default:
+        // Repeat the pattern
+        patternJumpRel(engine, channel, 0);
+
+        // Update pattern_repeat_count, which is cleared as part of the jump.
+        voice->pattern_repeat_count = new_count;
+
+        break;
+    }
+}
+
 typedef void (*effect_t)(struct ltc_sound_engine *engine, uint8_t channel, uint8_t arg);
 
 static const effect_t effect_lut[] = {
     0,
     patternDelay,
-    jumpToPattern,
+    patternJumpAbs,
     setInstrument,
     setAttackLevel,
     setDecayLevel,
     setSustainLevel,
     setMiddleC,
+    patternJumpRel,
+    patternRepeatCount,
 };
 
 void setSong(struct ltc_sound_engine *engine, const struct ltc_song *song) {
@@ -370,7 +419,9 @@ void setSong(struct ltc_sound_engine *engine, const struct ltc_song *song) {
     for (voice_num = 0; voice_num < VOICE_COUNT; voice_num++) {
         struct ltc_voice *voice = &engine->voices[voice_num];
         voice->pattern = song->patterns[voice_num];
+        voice->pattern_num = voice_num;
         voice->pattern_offset = 0;
+        voice->pattern_repeat_count = 0;
         voice->note_duration = 0;
         voice->rest_duration = 0;
         voice->sustain_level = 100;
